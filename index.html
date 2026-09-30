@@ -2,11 +2,45 @@
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>秘火守城 · Emberkeep</title>
 <style>
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#060c15;color:#ece1ca;font-family:system-ui,sans-serif}canvas{display:block;width:100%;height:100%;outline:none;touch-action:none;user-select:none;-webkit-user-select:none}#loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#0b1320}article{text-align:center;width:330px}h1{font-weight:500;font-size:36px;letter-spacing:5px;margin-bottom:12px}small{letter-spacing:6px;color:#dfb96c;font-size:12px}p{font-size:14px;color:#8496a6;margin-top:38px}progress{appearance:none;width:100%;height:3px;border:0;background:#27303b}progress::-webkit-progress-bar{background:#27303b}progress::-webkit-progress-value{background:#dfb96c}button{background:#654a27;color:#ece1ca;border:1px solid #b58c48;padding:12px 36px;border-radius:6px;cursor:pointer}#retry{display:none}
+</style>
+<meta name="theme-color" content="#060c15">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="宝石迷宫">
+<style>
+[hidden]{display:none!important}
+#install-hint{position:fixed;z-index:10;top:max(10px,env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right));left:max(10px,env(safe-area-inset-left));margin:auto;max-width:480px;box-sizing:border-box;display:flex;align-items:center;gap:10px;padding:8px 10px;background:#101e2ef5;border:1px solid #a78449;border-radius:10px;box-shadow:0 4px 20px #0008;font-size:14px}
+#install-hint span{flex:1}#install-hint button{min-height:44px;padding:6px 12px;font:inherit;white-space:nowrap}#install-dismiss{border:0;background:transparent!important;padding:6px!important;min-width:44px}
+#install-dialog{max-width:min(360px,calc(100vw - 48px));color:#ece1ca;background:#101e2e;border:1px solid #a78449;border-radius:12px;padding:24px;font:16px/1.7 system-ui,sans-serif}
+#install-dialog::backdrop{background:#0009}#install-dialog h2{margin:0 0 12px;font-size:22px}#install-dialog p{margin:8px 0 20px;color:#c8d1da;font-size:16px}#install-dialog button{font:inherit;min-height:44px}
 </style><link id="-gd-engine-icon" rel="icon" type="image/png" href="index.icon.png" />
 <link rel="apple-touch-icon" href="index.apple-touch-icon.png"/>
+<link rel="manifest" href="index.manifest.json">
 </head><body><canvas id="canvas" tabindex="0"></canvas><div id="loading"><article><small>EMBERKEEP</small><h1>秘火守城</h1><progress id="progress"></progress><p id="status">正在唤醒地穴……</p><button id="retry" onclick="location.reload()">重新加载</button></article></div>
+<aside id="install-hint" aria-label="安装游戏" hidden><span>安装到桌面，全屏玩</span><button id="install-button" type="button">安装应用</button><button id="install-dismiss" type="button" aria-label="关闭安装提示">×</button></aside>
+<dialog id="install-dialog" aria-labelledby="install-title"><h2 id="install-title">添加到主屏幕</h2><p>在 Safari 中打开此页，点“分享”，选择“添加到主屏幕”，再点“添加”。如果显示“作为 Web App 打开”，请保持开启。之后从桌面图标进入游戏，横过手机即可游玩。</p><button id="install-close" type="button">知道了</button></dialog>
 <script src="index.js"></script><script>
-const engine = new Engine({"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":11187368,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4});
+const engine = new Engine({"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":false,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":11187368,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4,"serviceWorker":"index.service.worker.js"});
+engine.installServiceWorker().catch(error=>console.warn('离线缓存暂未就绪',error));
+let installPrompt=null, dismissed=false;
+const hint=document.getElementById('install-hint'), installButton=document.getElementById('install-button'), installDialog=document.getElementById('install-dialog');
+const standalone=()=>navigator.standalone===true||matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: fullscreen)').matches;
+const ios=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+try{dismissed=sessionStorage.getItem('gem-maze-install-dismissed')==='1'}catch{}
+function updateInstallHint(){hint.hidden=standalone()||dismissed||(!installPrompt&&!ios)}
+window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();installPrompt=event;updateInstallHint()});
+window.addEventListener('appinstalled',()=>{installPrompt=null;hint.hidden=true});
+matchMedia('(display-mode: standalone)').addEventListener('change',updateInstallHint);
+matchMedia('(display-mode: fullscreen)').addEventListener('change',updateInstallHint);
+document.getElementById('install-dismiss').addEventListener('click',()=>{dismissed=true;try{sessionStorage.setItem('gem-maze-install-dismissed','1')}catch{}updateInstallHint();document.getElementById('canvas').focus()});
+installButton.addEventListener('click',async()=>{
+ if(!installPrompt){installDialog.showModal();return}
+ const prompt=installPrompt;installPrompt=null;installButton.disabled=true;
+ try{await prompt.prompt();await prompt.userChoice}finally{installButton.disabled=false;updateInstallHint()}
+});
+document.getElementById('install-close').addEventListener('click',()=>installDialog.close());
+installDialog.addEventListener('close',()=>installButton.focus());
+updateInstallHint();
 const statusText=document.getElementById('status'), bar=document.getElementById('progress');
 engine.startGame({onProgress(current,total){if(total>0){bar.max=total;bar.value=current;statusText.textContent='载入地穴 '+Math.round(current/total*100)+'%'}else{bar.removeAttribute('value');statusText.textContent='正在准备符文与元素……'}}}).then(()=>{document.getElementById('loading').remove();document.getElementById('canvas').focus()}).catch(error=>{statusText.textContent='加载失败：'+error.message;document.getElementById('retry').style.display='inline-block'});
 </script></body></html>
