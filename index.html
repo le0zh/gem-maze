@@ -22,7 +22,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#060c15;col
 <aside id="install-hint" aria-label="安装游戏" hidden><span>安装到桌面，全屏玩</span><button id="install-button" type="button">安装应用</button><button id="install-dismiss" type="button" aria-label="关闭安装提示">×</button></aside>
 <dialog id="install-dialog" aria-labelledby="install-title"><h2 id="install-title">添加到主屏幕</h2><p>在 Safari 中打开此页，点“分享”，选择“添加到主屏幕”，再点“添加”。如果显示“作为 Web App 打开”，请保持开启。之后从桌面图标进入游戏，游戏会自动使用横屏布局，无需开启手机自动旋转。</p><button id="install-close" type="button">知道了</button></dialog>
 <script src="index.js"></script><script>
-const engine = new Engine({"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":false,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":14426664,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4,"serviceWorker":"index.service.worker.js"});
+const engine = new Engine({"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":false,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":14434360,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4,"serviceWorker":"index.service.worker.js"});
 window.gameSafeInsets=()=>{const s=getComputedStyle(document.getElementById('safe-area'));return [s.paddingLeft,s.paddingTop,s.paddingRight,s.paddingBottom].map(value=>parseFloat(value)||0)};
 engine.installServiceWorker().catch(error=>console.warn('离线缓存暂未就绪',error));
 let installPrompt=null, dismissed=false;
