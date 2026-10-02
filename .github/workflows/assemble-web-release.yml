@@ -1,0 +1,80 @@
+name: Assemble game release
+on:
+  push:
+    branches: [release-staging]
+permissions:
+  contents: write
+concurrency:
+  group: gem-maze-release-assembly
+  cancel-in-progress: false
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Verify chunks, store the complete release blob, and clean staging
+        shell: python
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          import base64
+          import hashlib
+          import json
+          import os
+          import urllib.request
+          
+          REPO = 'le0zh/gem-maze'
+          BRANCH = 'release-staging'
+          assert os.environ['GITHUB_REPOSITORY'] == REPO
+          assert os.environ['GITHUB_REF'] == 'refs/heads/' + BRANCH
+          sha = os.environ['GITHUB_SHA']
+          assert len(sha) == 40 and all(c in '0123456789abcdef' for c in sha)
+          
+          def staged(path):
+              url = f'https://raw.githubusercontent.com/{REPO}/{sha}/.release-upload/{path}'
+              with urllib.request.urlopen(url, timeout=120) as response:
+                  return response.read()
+          
+          manifest = json.loads(staged('manifest.json'))
+          assert manifest['schema_version'] == 1
+          assert manifest['repository'] == REPO
+          assert 0 < manifest['pck_size'] < 100_000_000
+          assert 1 <= len(manifest['parts']) <= 20
+          parts = []
+          for number, item in enumerate(manifest['parts']):
+              assert item['path'] == f'index.pck.part{number}'
+              assert 0 < item['size'] <= 8_388_608
+              part = staged(item['path'])
+              assert len(part) == item['size']
+              assert hashlib.sha256(part).hexdigest() == item['sha256']
+              parts.append(part)
+          pack = b''.join(parts)
+          assert len(pack) == manifest['pck_size']
+          assert hashlib.sha256(pack).hexdigest() == manifest['pck_sha256']
+          assert hashlib.sha1(b'blob ' + str(len(pack)).encode() + b'\0' + pack).hexdigest() == manifest['pck_blob_sha']
+          
+          def api(path, method='GET', payload=None):
+              headers = {
+                  'Accept': 'application/vnd.github+json',
+                  'Authorization': 'Bearer ' + os.environ['GH_TOKEN'],
+                  'X-GitHub-Api-Version': '2022-11-28',
+              }
+              body = None if payload is None else json.dumps(payload).encode()
+              if body is not None:
+                  headers['Content-Type'] = 'application/json'
+              request = urllib.request.Request(f'https://api.github.com/repos/{REPO}/{path}', data=body, headers=headers, method=method)
+              with urllib.request.urlopen(request, timeout=180) as response:
+                  data = response.read()
+                  return json.loads(data) if data else None
+          
+          result = api('git/blobs', 'POST', {'encoding': 'base64', 'content': base64.b64encode(pack).decode('ascii')})
+          assert result['sha'] == manifest['pck_blob_sha']
+          print('VERIFIED_RELEASE_BLOB=' + result['sha'], flush=True)
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+              summary.write('Verified game pack: `' + result['sha'] + '` (' + str(len(pack)) + ' bytes).\n\n')
+              summary.write('Publish the complete prepared release tree to main with the authorized connector to trigger the existing Pages build.\n')
+          # Only remove our unchanged staging branch. The reusable workflow stays on main.
+          ref = api('git/ref/heads/' + BRANCH)
+          assert ref['object']['sha'] == sha, 'Staging branch moved; refusing cleanup'
+          api('git/refs/heads/' + BRANCH, 'DELETE')
+          print('TEMPORARY_STAGING_BRANCH_REMOVED=' + BRANCH, flush=True)
