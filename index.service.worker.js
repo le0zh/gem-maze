@@ -1,6 +1,6 @@
 // Generated version ties the HTML, engine and game pack to one complete release.
 const CACHE_PREFIX = 'gem-maze:' + self.registration.scope + ':';
-const CACHE_NAME = CACHE_PREFIX + 'f29f551b9cdf79bbf314';
+const CACHE_NAME = CACHE_PREFIX + '561e7b28dabb872fd423';
 const FILES = ["index.144x144.png", "index.180x180.png", "index.512x512.png", "index.apple-touch-icon.png", "index.audio.position.worklet.js", "index.audio.worklet.js", "index.html", "index.icon.png", "index.js", "index.manifest.json", "index.offline.html", "index.pck", "index.png", "index.wasm"];
 const urls = new Set(FILES.map(file => new URL(file, self.registration.scope).href));
 const entry = new URL('index.html', self.registration.scope).href;
